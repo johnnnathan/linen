@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -48,8 +47,7 @@ func readFile(fileDE string){
 
   for scanner.Scan(){
     var text string = scanner.Text()
-    fmt.Printf("scanner: %v %d\n", text, len(text))
-    analyzeLine(text, lines, inComment)
+    inComment = analyzeLine(text, lines, inComment)
   }
   file.Close()
 }
@@ -57,6 +55,10 @@ func readFile(fileDE string){
 func analyzeLine(line string, lines *Lines, inComment bool)bool{
   var text string = strings.TrimSpace(line)
 
+	if strings.HasPrefix(text, "//") || strings.HasPrefix(text, "# ") || strings.HasPrefix(text, "--") {
+    lines.comments+= 1 
+    return false
+  } 
   if len(text) == 0 || text == "\n"{
     lines.empty += 1
     return inComment
@@ -67,45 +69,38 @@ func analyzeLine(line string, lines *Lines, inComment bool)bool{
     }else{
       lines.code += 1; return false}
   }
-
-  char1 := text[0]
-  char2 := text[1]
-  if !inComment && char1 != '#' && (char1 != '/' && char2 != '/') && (char1 != '-' && char2 != '-'){
-    lines.code += 1 
-    return false
-  } 
   startBool, endBool := checkCommentSymbols(text)
-  if !inComment && startBool && endBool{
-    lines.comments += 1 
-    return false
-  }
-  if inComment && endBool{
-    lines.comments += 1 
-    return false
-  }
-  if !inComment && startBool{
-    lines.comments += 1 
-    return true
-  } 
+  if inComment && endBool {
+		lines.comments += 1
+		return false
+	}
+
+	if startBool && !endBool {
+		lines.comments += 1
+		return true
+	}
+
+	if inComment || (startBool && endBool){
+		lines.comments += 1
+		return inComment
+	}
+
+
+  lines.code += 1
   return inComment
 }
 
 func checkCommentSymbols(text string) (bool, bool) {
-	startPattern := regexp.MustCompile(`/\*`)
-	endPattern := regexp.MustCompile(`\*/`)
 
 	foundStart := false
 	foundEnd := false
 
-	lines := strings.Split(text, "\n")
-	for _, line := range lines {
-		if startPattern.MatchString(line) {
-			foundStart = true
-		}
-		if endPattern.MatchString(line) {
-			foundEnd = true
-		}
-	}
+  if strings.HasPrefix(text, "/*"){
+    foundStart = true
+  }
+  if strings.HasSuffix(text, "*/") {
+    foundEnd = true
+  }
 
 	return foundStart, foundEnd
 }
@@ -117,11 +112,7 @@ func readFiles(files []string)  {
 
 func main()  {
   var files []string
-  fmt.Println(len("\n"))
   files = getFiles(progenitorDir, files)
-  for _, element := range files{
-    fmt.Println(element)
-  }
   readFiles(files)
   for ext, lines := range total {
 		fmt.Printf("Extension: %s\n", ext)
