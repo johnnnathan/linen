@@ -8,7 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 )
-
+const (
+	Reset  = "\033[0m"
+	Red    = "\033[31m"
+	Green  = "\033[32m"
+	Yellow = "\033[33m"
+	Blue   = "\033[34m"
+	Cyan   = "\033[36m"
+)
 
 type Lines struct {
   comments , empty ,code int 
@@ -114,10 +121,13 @@ func main()  {
   var files []string
   files = getFiles(progenitorDir, files)
   readFiles(files)
-  for ext, lines := range total {
-		fmt.Printf("Extension: %s\n", ext)
-		fmt.Printf("Comments: %d\n", lines.comments)
-		fmt.Printf("Empty Lines: %d\n", lines.empty)
-		fmt.Printf("Code Lines: %d\n", lines.code)
+  fmt.Println(Blue + "Line Counting Results:" + Reset)
+	fmt.Println("----------------------------------------------------")
+	for ext, lines := range total {
+		fmt.Printf(Green+"Extension: %s\n"+Reset, ext)
+		fmt.Printf(Yellow+"Comments: %d\n"+Reset, lines.comments)
+		fmt.Printf(Cyan+"Empty Lines: %d\n"+Reset, lines.empty)
+		fmt.Printf(Red+"Code Lines: %d\n"+Reset, lines.code)
+		fmt.Println("----------------------------------------------------")
 	}
 }
