@@ -1,0 +1,27 @@
+<!<!DOCTYPE html>
+  <head>
+    <title>linen</title>
+    <style>
+      body {background-color : black}
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width" />
+    <script src="https://unpkg.com/htmx.org@1.8.0"></script>
+    </head>
+  <body>
+    <h1 style = "color : blue">linen script result</h1>
+
+    <div id="table">
+
+    </div>
+    <script>
+      function loadTableData() {
+          htmx.ajax('GET', '/dynamic', {target: '#table', swap: 'innerHTML'});
+      }
+      window.onload = loadTableData;
+    </script>
+    
+  </body>
+  
+
+</html>

@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 const (
 	Reset  = "\033[0m"
@@ -23,6 +26,10 @@ type Lines struct {
 
 var progenitorDir , error = os.Getwd()
 var total = make(map[string]*Lines)
+var responseSent     = false    
+var responseMutex    sync.Mutex 
+var server *http.Server
+var wantHTML = true 
 
 
 func getFiles(directory string, files []string) []string{
@@ -117,10 +124,36 @@ func readFiles(files []string)  {
   }
 }
 
-func main()  {
-  var files []string
-  files = getFiles(progenitorDir, files)
-  readFiles(files)
+func dynamicHandler(w http.ResponseWriter, r *http.Request){
+  responseMutex.Lock()
+  defer responseMutex.Unlock()
+  w.Header().Add("Content-Type", "text/html")
+  w.WriteHeader(http.StatusOK)
+  fmt.Fprintf(w, getHTML())
+  responseSent = true
+	go func() {
+		time.Sleep(2 * time.Second)
+		server.Shutdown(nil)
+	}()
+}
+
+func getHTML() string{
+  
+  bar := "----------------------------------------------------<br>"
+  var fullResult string
+  fullResult += bar
+	for ext, lines := range total {
+    fullResult += fmt.Sprintf("<div style= \"color:green;\"> Extension: %s </div><br>", ext);
+    fullResult += fmt.Sprintf("<div style = \"color:yellow;\"> Comments: %d</div><br>", lines.comments);
+    fullResult += fmt.Sprintf("<div style = \"color:cyan;\"> Empty Lines: %d</div><br>", lines.empty);
+    fullResult += fmt.Sprintf("<div style = \"color:red;\"> Code Lines: %d</div><br>", lines.code);
+    fullResult += bar 
+	}
+  return fullResult
+  
+}
+
+func printResults()  {
   fmt.Println(Blue + "Line Counting Results:" + Reset)
 	fmt.Println("----------------------------------------------------")
 	for ext, lines := range total {
@@ -130,4 +163,32 @@ func main()  {
 		fmt.Printf(Red+"Code Lines: %d\n"+Reset, lines.code)
 		fmt.Println("----------------------------------------------------")
 	}
+  
+}
+func main()  {
+  var files []string
+  files = getFiles(progenitorDir, files)
+  readFiles(files)
+  if !wantHTML{
+    printResults()
+    return
+  }
+  fs := http.FileServer(http.Dir("./static"))
+  http.Handle("/", fs)
+
+  http.HandleFunc("/dynamic", func(w http.ResponseWriter, r *http.Request){
+    dynamicHandler(w, r)
+  })
+  server = &http.Server{Addr: ":8080"}
+  go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("ListenAndServe(): %v", err)
+		}
+	}()
+  <-time.After(3 * time.Second) // Wait for 3 seconds before checking
+	if responseSent {
+		server.Shutdown(nil)
+	}
+
+
 }
