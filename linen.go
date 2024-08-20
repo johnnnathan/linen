@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +36,7 @@ var mapMutex         sync.Mutex
 var wg               sync.WaitGroup
 var server *http.Server
 var wantHTML = false 
+var version string = "1.0.0"
 
 
 func getFiles(directory string, files []string) []string{
@@ -181,7 +185,31 @@ func printResults()  {
 	}
   
 }
+
+func openBrowser(url string) {
+
+    switch runtime.GOOS {
+    case "linux":
+       exec.Command("xdg-open", url).Start()
+    case "windows":
+       exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+    case "darwin":
+       exec.Command("open", url).Start()
+    default:
+        log.Fatalf("unsupported platform")
+    }
+
+}
 func main()  {
+  var versionFlag  = false
+  flag.BoolVar(&wantHTML, "html", false, "Set to true if you want HTML output")
+  flag.BoolVar(&versionFlag, "version", false, "Showcase the application version")
+  flag.Parse()
+
+  if versionFlag{
+    fmt.Println(version)
+    os.Exit(0)
+  }
   var files []string
   files = getFiles(progenitorDir, files)
   readFiles(files)
@@ -189,6 +217,7 @@ func main()  {
     printResults()
     return
   }
+  fmt.Println("Something")
   fs := http.FileServer(http.Dir("./static"))
   http.Handle("/", fs)
 
@@ -201,10 +230,9 @@ func main()  {
 			log.Fatalf("ListenAndServe(): %v", err)
 		}
 	}()
-  <-time.After(3 * time.Second) // Wait for 3 seconds before checking
+  openBrowser("http://localhost:8080/webUI.html")
+  <-time.After(2 * time.Second) // Wait for 3 seconds before checking
 	if responseSent {
 		server.Shutdown(nil)
 	}
-
-
 }
