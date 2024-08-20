@@ -28,8 +28,11 @@ var progenitorDir , error = os.Getwd()
 var total = make(map[string]*Lines)
 var responseSent     = false    
 var responseMutex    sync.Mutex 
+var updateMutex      sync.Mutex
+var mapMutex         sync.Mutex
+var wg               sync.WaitGroup
 var server *http.Server
-var wantHTML = true 
+var wantHTML = false 
 
 
 func getFiles(directory string, files []string) []string{
@@ -46,6 +49,7 @@ func getFiles(directory string, files []string) []string{
 }
 
 func readFile(fileDE string){
+  defer wg.Done()
   file , err := os.Open(fileDE)
   ext := filepath.Ext(file.Name())
 
@@ -53,10 +57,12 @@ func readFile(fileDE string){
     log.Fatal(err)
   }
   scanner := bufio.NewScanner(file)
+  mapMutex.Lock()
   if _, exists := total[ext]; !exists {
 		total[ext] = &Lines{}
 	}
   lines := total[ext]
+  mapMutex.Unlock()
   var inComment bool = false
 
   for scanner.Scan(){
@@ -66,41 +72,49 @@ func readFile(fileDE string){
   file.Close()
 }
 
+func incrementLineValue(lineType *int){
+  updateMutex.Lock()
+  defer updateMutex.Unlock()
+  *lineType += 1 
+}
+
 func analyzeLine(line string, lines *Lines, inComment bool)bool{
   var text string = strings.TrimSpace(line)
 
 	if strings.HasPrefix(text, "//") || strings.HasPrefix(text, "# ") || strings.HasPrefix(text, "--") {
-    lines.comments+= 1 
+    incrementLineValue(&lines.comments)
     return false
   } 
   if len(text) == 0 || text == "\n"{
-    lines.empty += 1
+    incrementLineValue(&lines.empty)
     return inComment
   }
   if !inComment && len(text) == 1{
     if text[0] == '#'{
-      lines.comments += 1; return false
+      incrementLineValue(&lines.comments)
+      return false
     }else{
-      lines.code += 1; return false}
+      incrementLineValue(&lines.code)
+      return false}
   }
   startBool, endBool := checkCommentSymbols(text)
   if inComment && endBool {
-		lines.comments += 1
+		incrementLineValue(&lines.comments)
 		return false
 	}
 
 	if startBool && !endBool {
-		lines.comments += 1
+		incrementLineValue(&lines.comments)
 		return true
 	}
 
 	if inComment || (startBool && endBool){
-		lines.comments += 1
+		incrementLineValue(&lines.comments)
 		return inComment
 	}
 
 
-  lines.code += 1
+  incrementLineValue(&lines.code)
   return inComment
 }
 
@@ -120,8 +134,10 @@ func checkCommentSymbols(text string) (bool, bool) {
 }
 func readFiles(files []string)  {
   for _, element := range files{
-    readFile(element)
+    wg.Add(1)
+    go readFile(element)
   }
+  wg.Wait()
 }
 
 func dynamicHandler(w http.ResponseWriter, r *http.Request){
