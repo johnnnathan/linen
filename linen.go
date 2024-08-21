@@ -24,21 +24,95 @@ const (
 	Cyan   = "\033[36m"
 )
 
+var allowedExtensions = []string{
+  ".bat",
+  ".c",
+  ".cc",
+  ".cmd",
+  ".conf",
+  ".cpp",
+  ".cs",
+  ".css",
+  ".cxx",
+  ".ejs",
+  ".gitattributes",
+  ".gitignore",
+  ".gitmodules",
+  ".go",
+  ".gql",
+  ".graphql",
+  ".h",
+  ".handlebars",
+  ".hbs",
+  ".hpp",
+  ".htm",
+  ".html",
+  ".ini",
+  ".jade",
+  ".java",
+  ".js",
+  ".json",
+  ".jsx",
+  ".kt",
+  ".kts",
+  ".less",
+  ".lua",
+  ".m",
+  ".markdown",
+  ".md",
+  ".mk",
+  ".mm",
+  ".php",
+  ".pl",
+  ".pm",
+  ".ps1",
+  ".pug",
+  ".py",
+  ".r",
+  ".rb",
+  ".rmd",
+  ".rs",
+  ".sass",
+  ".sc",
+  ".scala",
+  ".scss",
+  ".sh",
+  ".sql",
+  ".sty",
+  ".swift",
+  ".tex",
+  ".toml",
+  ".ts",
+  ".tsx",
+  ".txt",
+  ".xml",
+  ".yaml",
+  ".yml",
+  ".zsh",
+  "Dockerfile",
+  "Makefile",
+}
+
 type Lines struct {
   comments , empty ,code int 
 }
+
+
 //go:embed VERSION.txt
 var versionFS embed.FS
-
-var progenitorDir , error = os.Getwd()
-var total = make(map[string]*Lines)
-var responseSent     = false    
-var responseMutex    sync.Mutex 
-var updateMutex      sync.Mutex
-var mapMutex         sync.Mutex
-var wg               sync.WaitGroup
-var server *http.Server
-var wantHTML = false 
+var (
+    progenitorDir, err = os.Getwd()
+    total              = make(map[string]*Lines)
+    responseSent       = false    
+    responseMutex      sync.Mutex 
+    updateMutex        sync.Mutex
+    mapMutex           sync.Mutex
+    wg                 sync.WaitGroup
+    server             *http.Server
+    wantHTML           = false 
+    noFilter           = false 
+    wantTime           = false
+)
 
 
 func getFiles(directory string, files []string) []string{
@@ -54,10 +128,38 @@ func getFiles(directory string, files []string) []string{
   return files
 }
 
+func extensionAllowed(ext string) bool  {
+  low := 0 
+  high := len(allowedExtensions)
+
+  for low <= high {
+    mid := (low + high) / 2
+    if allowedExtensions[mid] == ext{
+      return true
+    }else if allowedExtensions[mid] < ext{
+      low = mid + 1
+    }else {
+      high = mid - 1
+    }
+  }
+  return false
+
+
+
+
+  
+}
 func readFile(fileDE string){
   defer wg.Done()
   file , err := os.Open(fileDE)
   ext := filepath.Ext(file.Name())
+
+  if !noFilter{
+    isAllowed := extensionAllowed(ext)
+    if !isAllowed{
+      return 
+    }
+  }
 
   if err != nil{
     log.Fatal(err)
@@ -208,9 +310,12 @@ func openBrowser(url string) {
 
 }
 func main()  {
+  start := time.Now()
   var versionFlag  = false
   flag.BoolVar(&wantHTML, "html", false, "Set to true if you want HTML output")
   flag.BoolVar(&versionFlag, "version", false, "Showcase the application version")
+  flag.BoolVar(&noFilter, "nofilter", false, "Analyzes every type of file, could cause unexpected behavior")
+  flag.BoolVar(&wantTime, "time", false, "Time the execution of the program")
   flag.Parse()
 
   if versionFlag{
@@ -220,6 +325,10 @@ func main()  {
   var files []string
   files = getFiles(progenitorDir, files)
   readFiles(files)
+  elapsed := time.Since(start)
+  if wantTime{
+    fmt.Println(elapsed)
+  }
   if !wantHTML{
     printResults()
     return
