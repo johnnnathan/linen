@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"embed"
 	"flag"
 	"fmt"
 	"log"
@@ -26,6 +27,8 @@ const (
 type Lines struct {
   comments , empty ,code int 
 }
+//go:embed VERSION.txt
+var versionFS embed.FS
 
 var progenitorDir , error = os.Getwd()
 var total = make(map[string]*Lines)
@@ -36,7 +39,6 @@ var mapMutex         sync.Mutex
 var wg               sync.WaitGroup
 var server *http.Server
 var wantHTML = false 
-var version string = "1.0.0"
 
 
 func getFiles(directory string, files []string) []string{
@@ -80,6 +82,11 @@ func incrementLineValue(lineType *int){
   updateMutex.Lock()
   defer updateMutex.Unlock()
   *lineType += 1 
+}
+
+func getVersion(){
+  file , _:= versionFS.ReadFile("VERSION.txt")
+  fmt.Printf("Version : %s\n", (string(file)))
 }
 
 func analyzeLine(line string, lines *Lines, inComment bool)bool{
@@ -207,7 +214,7 @@ func main()  {
   flag.Parse()
 
   if versionFlag{
-    fmt.Println(version)
+    getVersion()
     os.Exit(0)
   }
   var files []string
