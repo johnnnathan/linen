@@ -26,11 +26,23 @@ You can run the program using the following command:
 ```bash
 go run linen.go
 ```
+Or Install it using the scipt:
 
+```bash
+go build -o linen
+chmod +x ./util/installer.sh (only once)
+./util/installer.sh
+linen (from anywhere)
+```
+Un-Installation Process:
+```bash
+chmod +x (only once)
+./util/uninstaller.sh
+```
 ## Future Improvements
 
 - **Extended Comment Parsing:** Enhance the comment detection logic to support more programming languages and comment styles.
-- **Concurrency:** Implement concurrent file processing to improve performance in large projects.
+- **Concurrency:** Implement concurrent file processing to improve performance in large projects. - Done
 - **Visualization:** Improved visualization in terminal and possible usage of html for in browser inspection
 
 ## License
