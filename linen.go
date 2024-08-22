@@ -149,17 +149,10 @@ func extensionAllowed(ext string) bool  {
 
   
 }
-func readFile(fileDE string){
+func readFile(fileDE string, ext string ){
   defer wg.Done()
   file , err := os.Open(fileDE)
-  ext := filepath.Ext(file.Name())
 
-  if !noFilter{
-    isAllowed := extensionAllowed(ext)
-    if !isAllowed{
-      return 
-    }
-  }
 
   if err != nil{
     log.Fatal(err)
@@ -247,8 +240,16 @@ func checkCommentSymbols(text string) (bool, bool) {
 }
 func readFiles(files []string)  {
   for _, element := range files{
+    var ext string
+    if !noFilter{
+      ext = filepath.Ext(element)
+      isAllowed := extensionAllowed(ext)
+      if !isAllowed{
+        continue
+      }
+    }
     wg.Add(1)
-    go readFile(element)
+    go readFile(element, ext)
   }
   wg.Wait()
 }
