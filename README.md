@@ -30,13 +30,13 @@ Or Install it using the scipt:
 
 ```bash
 go build -o linen
-chmod +x ./util/installer.sh (only once)
+chmod +x ./util/installer.sh 
 ./util/installer.sh
-linen (from anywhere)
+linen 
 ```
 Un-Installation Process:
 ```bash
-chmod +x (only once)
+chmod +x 
 ./util/uninstaller.sh
 ```
 ## Future Improvements
